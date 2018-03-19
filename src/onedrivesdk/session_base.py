@@ -30,13 +30,10 @@ class SessionBase(object):
     def __init__(self,
                  token_type,
                  expires_in,
-                 scope_string,
                  access_token,
                  client_id,
                  auth_server_url,
-                 redirect_uri,
-                 refresh_token=None,
-                 client_secret=None):
+                 refresh_token=None):
         pass
     
     @abc.abstractmethod
@@ -52,5 +49,5 @@ class SessionBase(object):
         pass
     
     @abc.abstractmethod
-    def load_session(**load_session_kwargs):
+    def load_session(self, **load_session_kwargs):
         pass

@@ -27,6 +27,7 @@ from .auth_provider_base import AuthProviderBase
 from .options import *
 from .session import Session
 import sys
+import time
 
 try:
     from urllib.parse import urlencode
@@ -36,11 +37,7 @@ except ImportError:
 
 class AuthProvider(AuthProviderBase):
 
-    MSA_AUTH_SERVER_URL = "https://login.live.com/oauth20_authorize.srf"
-    MSA_AUTH_TOKEN_URL = "https://login.live.com/oauth20_token.srf"
-
-    def __init__(self, http_provider, client_id=None, scopes=None, access_token=None, session_type=None, loop=None,
-                 auth_server_url=None, auth_token_url=None):
+    def __init__(self, http_provider, client_id=None, tenant_id=None, access_token=None, session_type=None, loop=None):
         """Initialize the authentication provider for authenticating
         requests sent to OneDrive
 
@@ -49,9 +46,7 @@ class AuthProvider(AuthProviderBase):
                 The HTTP provider to use for all auth requests
             client_id (str): Defaults to None, the client id for your
                 application
-            scopes (list of str): Defaults to None, the scopes 
-                that are required for your application
-            access_token (str): Defaults to None. Not used in this implementation.
+            access_token (str): Defaults to None
             session_type (:class:`SessionBase<onedrivesdk.session_base.SessionBase>`):
                 Defaults to :class:`Session<onedrivesdk.session.Session>`,
                 the implementation of SessionBase that stores your
@@ -63,18 +58,14 @@ class AuthProvider(AuthProviderBase):
                 loop to use for all async requests. If none is provided,
                 asyncio.get_event_loop() will be called. If using Python
                 3.3 or below this does not need to be specified
-            auth_server_url (str): URL where OAuth authentication can be performed. If
-                None, defaults to OAuth for Microsoft Account.
-            auth_token_url (str): URL where OAuth token can be redeemed. If None,
-                defaults to OAuth for Microsoft Account.
+            tenant_id (str): The tenant ID of the directory where your App Registration exists
         """
         self._http_provider = http_provider
         self._client_id = client_id
-        self._scopes = scopes
+        self._tenant_id = tenant_id
         self._session_type = Session if session_type is None else session_type
         self._session = None
-        self._auth_server_url = self.MSA_AUTH_SERVER_URL if auth_server_url is None else auth_server_url
-        self._auth_token_url = self.MSA_AUTH_TOKEN_URL if auth_token_url is None else auth_token_url
+        self._auth_token_url = "https://login.microsoftonline.com/" + self._tenant_id + "/oauth2/token"
 
         if sys.version_info >= (3, 4, 0):
             import asyncio
@@ -95,18 +86,17 @@ class AuthProvider(AuthProviderBase):
         self._client_id = value
 
     @property
-    def scopes(self):
-        """Gets and sets the scopes for the
-        AuthProvider
+    def tenant_id(self):
+        """Gets and sets the tenant ID
 
         Returns:
-            list of str: The scopes
+            str: the tenant ID
         """
-        return self._scopes
+        return self._tenant_id
 
-    @scopes.setter
-    def scopes(self, value):
-        self._scopes = value
+    @tenant_id.setter
+    def tenant_id(self, value):
+        self._tenant_id = value
 
     @property
     def access_token(self):
@@ -122,20 +112,6 @@ class AuthProvider(AuthProviderBase):
         return None
 
     @property
-    def auth_server_url(self):
-        """Gets and sets the authorization server url for the
-            :class:`AuthProvider`
-
-        Returns:
-            str: Auth server url
-        """
-        return self._auth_server_url
-
-    @auth_server_url.setter
-    def auth_server_url(self, value):
-        self._auth_server_url = value
-
-    @property
     def auth_token_url(self):
         """Gets and sets the authorization token url for the
         AuthProvider
@@ -149,13 +125,11 @@ class AuthProvider(AuthProviderBase):
     def auth_token_url(self, value):
         self._auth_token_url = value
 
-    def get_auth_url(self, redirect_uri, response_type=None):
+    def get_auth_url(self, resource):
         """Build the auth url using the params provided
         and the auth_provider
 
         Args:
-            redirect_uri (str): The URI to redirect the response
-                to
             response_type (str): Response type query param value.
                 If not provided, defaults to 'code'. Should be either
                 'code' or 'token'.
@@ -163,37 +137,18 @@ class AuthProvider(AuthProviderBase):
 
         params = {
             "client_id": self.client_id,
-            "response_type": "code" if response_type is None else response_type,
-            "redirect_uri": redirect_uri
+            "resource": resource
             }
-        if self.scopes is not None:
-            params["scope"] = " ".join(self.scopes)
 
-        return "{}?{}".format(self._auth_server_url, urlencode(params))
+        return "{}?{}".format(self._auth_token_url, urlencode(params))
 
-    def authenticate(self, code, redirect_uri, client_secret, resource=None):
-        """Takes in a code, gets the access token and creates a session.
-
-        Args:
-            code (str):
-                The code provided by the oauth provider.
-            redirect_uri (str): The URI to redirect the callback
-                to
-            client_secret (str): The client secret of your app.
-            resource (str): Defaults to None,The resource  
-                you want to access
+    def authenticate(self, resource):
+        """Gets the access token and creates a session.
         """
         params = {
             "client_id": self.client_id,
-            "redirect_uri": redirect_uri,
-            "client_secret": client_secret,
-            "code": code,
-            "response_type": "code",
-            "grant_type": "authorization_code"
+            "resource": resource
         }
-
-        if resource is not None:
-            params["resource"] = resource
 
         auth_url = self._auth_token_url
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -203,15 +158,43 @@ class AuthProvider(AuthProviderBase):
                                             data=params)
 
         rcont = json.loads(response.content)
-        self._session = self._session_type(rcont["token_type"],
-                                rcont["expires_in"],
-                                rcont["scope"],
-                                rcont["access_token"],
-                                self.client_id,
-                                self._auth_token_url,
-                                redirect_uri,
-                                rcont["refresh_token"] if "refresh_token" in rcont else None,
-                                client_secret)
+        device_code = rcont["device_code"]
+        expires_in = rcont["expires_in"]
+        interval = rcont["interval"]
+        message = rcont["message"].str()
+
+        print(message)
+
+        params = {
+            "resource": resource,
+            "client_id": self.client_id,
+            "grant_type": "device_code",
+            "code": device_code
+        }
+
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        rcont = None
+
+        t_end = time.time() + int(expires_in)
+        while time.time() < t_end:
+            try:
+                response = self._http_provider.send(method="POST",
+                                                    headers=headers,
+                                                    url=auth_url,
+                                                    data=params)
+                rcont = json.loads(response.content)
+            except:
+                time.sleep(interval)
+
+        if time.time() >= t_end:
+            raise RuntimeError("""Timed out waiting for user to verify""")
+        else:
+            self._session = self._session_type(rcont["token_type"],
+                                    rcont["expires_in"],
+                                    rcont["access_token"],
+                                    self.client_id,
+                                    self._auth_token_url,
+                                    rcont["refresh_token"] if "refresh_token" in rcont else None)
 
     def authenticate_request(self, request):
         """Append the required authentication headers
@@ -228,7 +211,7 @@ class AuthProvider(AuthProviderBase):
             raise RuntimeError("""Session must be authenticated 
                 before applying authentication to a request.""")
 
-        if self._session.is_expired() and 'wl.offline_access' in self.scopes:
+        if self._session.is_expired():
             self.refresh_token()
 
         request.append_option(
@@ -247,21 +230,16 @@ class AuthProvider(AuthProviderBase):
         params = {
             "refresh_token": self._session.refresh_token,
             "client_id": self._session.client_id,
-            "redirect_uri": self._session.redirect_uri,
             "grant_type": "refresh_token"
         }
-
-        if self._session.client_secret is not None:
-            params["client_secret"] = self._session.client_secret
 
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = self._http_provider.send(method="POST",
                                             headers=headers,
-                                            url=self._session.auth_server_url,
+                                            url=self._session.auth_token_url,
                                             data=params)
         rcont = json.loads(response.content)
         self._session.refresh_session(rcont["expires_in"],
-                                      rcont["scope"],
                                       rcont["access_token"],
                                       rcont["refresh_token"])
 
@@ -282,8 +260,6 @@ class AuthProvider(AuthProviderBase):
 
         params = {
             "client_id": self._session.client_id,
-            "redirect_uri": self._session.redirect_uri,
-            "client_secret": self._session.client_secret,
             "refresh_token": self._session.refresh_token,
             "grant_type": "refresh_token",
             "resource": resource

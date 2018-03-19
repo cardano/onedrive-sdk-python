@@ -25,28 +25,21 @@ from __future__ import unicode_literals
 from .session_base import SessionBase
 from time import time
 
-
 class Session(SessionBase):
 
     def __init__(self,
                  token_type,
                  expires_in,
-                 scope_string,
                  access_token,
                  client_id,
                  auth_server_url,
-                 redirect_uri,
-                 refresh_token=None,
-                 client_secret=None):
+                 refresh_token=None):
         self.token_type = token_type
         self._expires_at = time() + int(expires_in)
-        self.scope = scope_string.split(" ")
         self.access_token = access_token
         self.client_id = client_id
         self.auth_server_url = auth_server_url
-        self.redirect_uri = redirect_uri
         self.refresh_token = refresh_token
-        self.client_secret = client_secret
 
     def is_expired(self):
         """Whether or not the session has expired
@@ -57,9 +50,8 @@ class Session(SessionBase):
         # Add a 10 second buffer in case the token is just about to expire
         return self._expires_at < time() - 10
 
-    def refresh_session(self, expires_in, scope_string, access_token, refresh_token):
+    def refresh_session(self, expires_in, access_token, refresh_token):
         self._expires_at = time() + int(expires_in)
-        self.scope = scope_string.split(" ")
         self.access_token = access_token
         self.refresh_token = refresh_token
 
@@ -77,7 +69,7 @@ class Session(SessionBase):
             default implementation (this one) takes a relative or absolute
             file path for pickle save location, under the name "path"
         """
-        path = "session.pickle"
+        path = "/tmp/session.pickle"
         if "path" in save_session_kwargs:
             path = save_session_kwargs["path"]
         
@@ -87,7 +79,7 @@ class Session(SessionBase):
             pickle.dump(self, session_file, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
-    def load_session(**load_session_kwargs):
+    def load_session(self, **load_session_kwargs):
         """Save the current session.
         IMPORTANT: This implementation should only be used for debugging.
         For real applications, the Session object should be subclassed and
@@ -104,7 +96,7 @@ class Session(SessionBase):
         Returns:
             :class:`Session`: The loaded session
         """
-        path = "session.pickle"
+        path = "/tmp/session.pickle"
         if "path" in load_session_kwargs:
             path = load_session_kwargs["path"]
         

@@ -28,7 +28,7 @@ class AuthProviderBase(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, http_provider, client_id, scopes, access_token):
+    def __init__(self, http_provider, client_id, access_token):
         pass
 
     @property
@@ -38,15 +38,6 @@ class AuthProviderBase(object):
     @client_id.setter
     @abc.abstractmethod
     def client_id(self, value):
-        pass
-
-    @property
-    def scopes(self):
-        pass
-
-    @scopes.setter
-    @abc.abstractmethod
-    def scopes(self, value):
         pass
 
     @property
