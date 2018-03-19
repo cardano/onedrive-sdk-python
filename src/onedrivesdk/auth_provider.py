@@ -65,7 +65,8 @@ class AuthProvider(AuthProviderBase):
         self._tenant_id = tenant_id
         self._session_type = Session if session_type is None else session_type
         self._session = None
-        self._auth_token_url = "https://login.microsoftonline.com/" + self._tenant_id + "/oauth2/token"
+        self._token_url = "https://login.microsoftonline.com/" + self._tenant_id + "/oauth2/token"
+        self._devicecode_url = "https://login.microsoftonline.com/" + self._tenant_id + "/oauth2/devicecode"
 
         if sys.version_info >= (3, 4, 0):
             import asyncio
@@ -112,21 +113,35 @@ class AuthProvider(AuthProviderBase):
         return None
 
     @property
-    def auth_token_url(self):
+    def token_url(self):
         """Gets and sets the authorization token url for the
         AuthProvider
 
         Returns:
             str: The auth token url
         """
-        return self._auth_token_url
+        return self._token_url
 
-    @auth_token_url.setter
-    def auth_token_url(self, value):
-        self._auth_token_url = value
+    @token_url.setter
+    def token_url(self, value):
+        self._token_url = value
 
-    def get_auth_url(self, resource):
-        """Build the auth url using the params provided
+    @property
+    def devicecode_url(self):
+        """Gets and sets the authorization token url for the
+        AuthProvider
+
+        Returns:
+            str: The auth token url
+        """
+        return self._devicecode_url
+
+    @token_url.setter
+    def devicecode_url(self, value):
+        self._devicecode_url = value
+
+    def get_token_url(self, resource):
+        """Build the token url using the params provided
         and the auth_provider
 
         Args:
@@ -140,7 +155,7 @@ class AuthProvider(AuthProviderBase):
             "resource": resource
             }
 
-        return "{}?{}".format(self._auth_token_url, urlencode(params))
+        return "{}?{}".format(self._token_url, urlencode(params))
 
     def authenticate(self, resource):
         """Gets the access token and creates a session.
@@ -150,11 +165,11 @@ class AuthProvider(AuthProviderBase):
             "resource": resource
         }
 
-        auth_url = self._auth_token_url
+        devicecode_url = self._devicecode_url
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = self._http_provider.send(method="POST",
                                             headers=headers,
-                                            url=auth_url,
+                                            url=devicecode_url,
                                             data=params)
 
         rcont = json.loads(response.content)
@@ -175,12 +190,13 @@ class AuthProvider(AuthProviderBase):
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         rcont = None
 
+        token_url = self.token_url
         t_end = time.time() + int(expires_in)
         while time.time() < t_end:
             try:
                 response = self._http_provider.send(method="POST",
                                                     headers=headers,
-                                                    url=auth_url,
+                                                    url=token_url,
                                                     data=params)
                 rcont = json.loads(response.content)
             except:
@@ -193,7 +209,7 @@ class AuthProvider(AuthProviderBase):
                                     rcont["expires_in"],
                                     rcont["access_token"],
                                     self.client_id,
-                                    self._auth_token_url,
+                                    self._token_url,
                                     rcont["refresh_token"] if "refresh_token" in rcont else None)
 
     def authenticate_request(self, request):
@@ -268,7 +284,7 @@ class AuthProvider(AuthProviderBase):
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = self._http_provider.send(method="POST",
                                             headers=headers,
-                                            url=self.auth_token_url,
+                                            url=self.token_url,
                                             data=params)
         rcont = json.loads(response.content)
         self._session.refresh_session(rcont["expires_in"],
