@@ -23,6 +23,7 @@
 '''
 from __future__ import unicode_literals
 import json
+from urllib.parse import urlencode
 from .auth_provider_base import AuthProviderBase
 from .options import *
 from .session import Session
@@ -166,11 +167,11 @@ class AuthProvider(AuthProviderBase):
         }
 
         devicecode_url = self._devicecode_url
-        headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = self._http_provider.send(method="POST",
                                             headers=headers,
                                             url=devicecode_url,
-                                            data=params)
+                                            data=urlencode(params))
 
         rcont = json.loads(response.content)
         device_code = rcont["device_code"]
@@ -187,7 +188,7 @@ class AuthProvider(AuthProviderBase):
             "code": device_code
         }
 
-        headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         rcont = None
 
         token_url = self.token_url
@@ -199,7 +200,7 @@ class AuthProvider(AuthProviderBase):
                 response = self._http_provider.send(method="POST",
                                                     headers=headers,
                                                     url=token_url,
-                                                    data=params)
+                                                    data=urlencode(params))
                 rcont = json.loads(response.content)
             except Exception as e:
                 print("Got exception trying to get token: ", e)
