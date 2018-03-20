@@ -23,6 +23,7 @@
 '''
 from __future__ import unicode_literals, with_statement
 import requests
+import logging
 from .http_provider_base import HttpProviderBase
 from .http_response import HttpResponse
 
@@ -50,6 +51,12 @@ class HttpProvider(HttpProviderBase):
                 The response to the request
         """
         session = requests.Session()
+
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
 
         if path:
             with open(path, mode='rb') as f:

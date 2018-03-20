@@ -171,7 +171,7 @@ class AuthProvider(AuthProviderBase):
         response = self._http_provider.send(method="POST",
                                             headers=headers,
                                             url=devicecode_url,
-                                            data=urlencode(params))
+                                            data=params)
 
         rcont = json.loads(response.content)
         device_code = rcont["device_code"]
@@ -196,11 +196,11 @@ class AuthProvider(AuthProviderBase):
         while time.time() < t_end:
             try:
                 print("Trying to send payload:")
-                print(urlencode(params))
+                print(params)
                 response = self._http_provider.send(method="POST",
                                                     headers=headers,
                                                     url=token_url,
-                                                    data=urlencode(params))
+                                                    data=params)
                 rcont = json.loads(response.content)
             except Exception as e:
                 print("Got exception trying to get token: ", e)
