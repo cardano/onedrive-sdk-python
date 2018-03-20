@@ -52,6 +52,13 @@ class HttpProvider(HttpProviderBase):
         """
         session = requests.Session()
 
+        try:
+            from http.client import HTTPConnection # py3
+        except ImportError:
+            from httplib import HTTPConnection # py2
+
+        HTTPConnection.debuglevel = 1
+
         logging.basicConfig()
         logging.getLogger().setLevel(logging.DEBUG)
         requests_log = logging.getLogger("requests.packages.urllib3")
