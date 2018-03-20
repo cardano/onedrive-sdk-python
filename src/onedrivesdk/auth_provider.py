@@ -196,7 +196,7 @@ class AuthProvider(AuthProviderBase):
         while time.time() < t_end:
             try:
                 print("Trying to send payload:")
-                print(json.dumps(params))
+                print(urlencode(params))
                 response = self._http_provider.send(method="POST",
                                                     headers=headers,
                                                     url=token_url,
