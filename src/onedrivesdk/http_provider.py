@@ -29,7 +29,7 @@ from .http_response import HttpResponse
 
 class HttpProvider(HttpProviderBase):
 
-    def send(self, method, headers, url, data=None, content=None, path=None):
+    def send(self, method, headers, url, data=None, content=None, path=None, timeout=None, stream=True):
         """Send the built request using all the specified
         parameters.
 
@@ -58,7 +58,7 @@ class HttpProvider(HttpProviderBase):
                                            headers=headers,
                                            data=f)
                 prepped = request.prepare()
-                response = session.send(prepped)
+                response = session.send(prepped, timeout=timeout, stream=stream)
         else:
             request = requests.Request(method,
                                        url,
@@ -66,7 +66,7 @@ class HttpProvider(HttpProviderBase):
                                        data=data,
                                        json=content)
             prepped = request.prepare()
-            response = session.send(prepped)
+            response = session.send(prepped, timeout=timeout, stream=stream)
 
         custom_response = HttpResponse(response.status_code, response.headers, response.text)
         return custom_response

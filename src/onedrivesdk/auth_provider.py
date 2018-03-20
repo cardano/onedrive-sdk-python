@@ -166,17 +166,19 @@ class AuthProvider(AuthProviderBase):
         }
 
         devicecode_url = self._devicecode_url
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        headers = {'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36', "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
         response = self._http_provider.send(method="POST",
                                             headers=headers,
                                             url=devicecode_url,
-                                            data=params)
+                                            data=params,
+                                            timeout=10,
+                                            stream=False)
 
         rcont = json.loads(response.content)
         device_code = rcont["device_code"]
         expires_in = rcont["expires_in"]
         interval = rcont["interval"]
-        message = rcont["message"].str()
+        message = rcont["message"]
 
         print(message)
 
@@ -187,7 +189,7 @@ class AuthProvider(AuthProviderBase):
             "code": device_code
         }
 
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        headers = {'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36', "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
         rcont = None
 
         token_url = self.token_url
@@ -197,14 +199,19 @@ class AuthProvider(AuthProviderBase):
                 response = self._http_provider.send(method="POST",
                                                     headers=headers,
                                                     url=token_url,
-                                                    data=params)
+                                                    data=params,
+                                                    timeout=10,
+                                                    stream=False)
                 rcont = json.loads(response.content)
-            except:
-                time.sleep(interval)
+            except Exception as e:
+                print("Got exception trying to get token: ", e)
+                print("Waiting another 5 seconds...")
+                time.sleep(int(interval))
 
         if time.time() >= t_end:
             raise RuntimeError("""Timed out waiting for user to verify""")
         else:
+            print ("Got token, saving to session...")
             self._session = self._session_type(rcont["token_type"],
                                     rcont["expires_in"],
                                     rcont["access_token"],
