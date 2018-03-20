@@ -166,13 +166,11 @@ class AuthProvider(AuthProviderBase):
         }
 
         devicecode_url = self._devicecode_url
-        headers = {'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36', "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
         response = self._http_provider.send(method="POST",
                                             headers=headers,
                                             url=devicecode_url,
-                                            data=params,
-                                            timeout=10,
-                                            stream=False)
+                                            data=params)
 
         rcont = json.loads(response.content)
         device_code = rcont["device_code"]
@@ -189,19 +187,19 @@ class AuthProvider(AuthProviderBase):
             "code": device_code
         }
 
-        headers = {'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36', "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
         rcont = None
 
         token_url = self.token_url
         t_end = time.time() + int(expires_in)
         while time.time() < t_end:
             try:
+                print("Trying to send payload:")
+                print(json.dumps(params))
                 response = self._http_provider.send(method="POST",
                                                     headers=headers,
                                                     url=token_url,
-                                                    data=params,
-                                                    timeout=10,
-                                                    stream=False)
+                                                    data=params)
                 rcont = json.loads(response.content)
             except Exception as e:
                 print("Got exception trying to get token: ", e)
